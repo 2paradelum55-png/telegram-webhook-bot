@@ -1,8 +1,10 @@
 import os
 import asyncio
 from flask import Flask, request
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+
+from aiogram import Bot, Dispatcher
+from aiogram.filters import Command
+from aiogram.types import Message, Update
 
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
@@ -10,15 +12,13 @@ if not TOKEN:
 
 WEBHOOK_PATH = "/webhook"
 
-# Telegram app
-tg_app = Application.builder().token(TOKEN).build()
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Працюю ✅ (/start відповів)")
+@dp.message(Command("start"))
+async def cmd_start(message: Message):
+    await message.answer("Працюю ✅ (aiogram + webhook)")
 
-tg_app.add_handler(CommandHandler("start", start))
-
-# Flask app
 app = Flask(__name__)
 
 @app.get("/")
@@ -27,13 +27,13 @@ def index():
 
 @app.post(WEBHOOK_PATH)
 def webhook():
-    update = Update.de_json(request.get_json(force=True), tg_app.bot)
-    tg_app.update_queue.put_nowait(update)
+    upd = Update.model_validate(request.get_json(force=True))
+    asyncio.get_event_loop().create_task(dp.feed_update(bot, upd))
     return "ok"
 
 async def startup():
-    await tg_app.initialize()
-    await tg_app.start()
+    # aiogram не потребує окремого start для webhook-режиму
+    pass
 
 def main():
     asyncio.run(startup())
