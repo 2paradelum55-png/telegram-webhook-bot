@@ -1,2 +1,2 @@
-python-telegram-bot==20.7
-flask
+aiogram==3.4.1
+flask==3.0.0
